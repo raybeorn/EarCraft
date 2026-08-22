@@ -60,7 +60,6 @@ An internet connection is necessary for this download. The browser then caches t
 - The app uses plain HTML, CSS, and JavaScript. It has no build step.
 - Piano sound: Tone.js version 15.1.22 with the Salamander Grand Piano samples.
 - Music notation: VexFlow version 5.0.0.
-- Both library versions are pinned. Both have no known security vulnerabilities in the Snyk database.
 
 ## Credits
 

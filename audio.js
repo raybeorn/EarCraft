@@ -36,14 +36,46 @@ const Piano = (() => {
     return loadingPromise;
   }
 
+  // On iOS, route audio through the media/playback channel so the physical
+  // silent/mute switch does not silence the app. Safari 16.4+ only; harmless elsewhere.
+  function setPlaybackSession() {
+    try {
+      if (typeof navigator !== "undefined" && "audioSession" in navigator) {
+        navigator.audioSession.type = "playback";
+      }
+    } catch (e) {
+      /* ignore unsupported */
+    }
+  }
+
   // Must be called from a user gesture before any sound.
   async function ensureReady() {
     if (!started) {
+      setPlaybackSession();
       await Tone.start();
       started = true;
     }
     await load();
   }
+
+  // Unlock the AudioContext on the very first user interaction anywhere on the
+  // page. This makes iOS reliably start audio even before the first Play tap.
+  function attachUnlock() {
+    const unlock = async () => {
+      try {
+        setPlaybackSession();
+        await Tone.start();
+        started = true;
+      } catch (e) {
+        /* ignore */
+      }
+      document.removeEventListener("touchend", unlock, true);
+      document.removeEventListener("pointerdown", unlock, true);
+    };
+    document.addEventListener("touchend", unlock, true);
+    document.addEventListener("pointerdown", unlock, true);
+  }
+  if (typeof document !== "undefined") attachUnlock();
 
   function isLoaded() {
     return sampler !== null && sampler.loaded;
