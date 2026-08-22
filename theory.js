@@ -56,6 +56,8 @@ const CHORDS = [
 const SCALES = {
   major: { name: "Major", steps: [0, 2, 4, 5, 7, 9, 11] },
   minor: { name: "Natural Minor", steps: [0, 2, 3, 5, 7, 8, 10] },
+  harmonicMinor: { name: "Harmonic Minor", steps: [0, 2, 3, 5, 7, 8, 11] },
+  melodicMinor: { name: "Melodic Minor", steps: [0, 2, 3, 5, 7, 9, 11] },
 };
 
 // Solfege for major scale degrees

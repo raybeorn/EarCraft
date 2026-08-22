@@ -124,6 +124,18 @@ document.addEventListener("DOMContentLoaded", () => {
     return res;
   }
 
+  // Which accidental (if any) a note needs, given its letter/octave/pitch and the key.
+  // Returns "" when the key signature already spells the pitch (so no accidental is drawn).
+  const ACC_SYMBOL = { "-2": "bb", "-1": "b", "0": "n", "1": "#", "2": "##" };
+  function accForLetter(letter, octave, midi, keyInfo) {
+    const naturalMidi = (octave + 1) * 12 + NAT_SEMI[letter];
+    const accOffset = midi - naturalMidi;
+    const keySig = keyInfo.altered[letter] || "";
+    const keyOffset = keySig === "#" ? 1 : keySig === "b" ? -1 : 0;
+    if (accOffset === keyOffset) return "";
+    return ACC_SYMBOL[String(accOffset)] || "";
+  }
+
   function scaleDegreeToNote(deg) {
     const steps = SCALES[cfg.scaleKey].steps;
     const idx = ((deg % 7) + 7) % 7;
@@ -133,21 +145,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const letter = LETTERS[letterPos % 7];
     const octave = cfg.tonicOctave + octShift + extraOct;
     const midi = cfg.tonicMidi + steps[idx] + 12 * octShift;
-    return { letter, octave, midi, acc: "" };
+    // Raised 6th/7th of harmonic & melodic minor need an explicit accidental.
+    const acc = accForLetter(letter, octave, midi, cfg.keyInfo);
+    return { letter, octave, midi, acc };
   }
 
+  // Shift a note a semitone out of key, keeping the same letter and re-spelling it.
   function chromaticAlter(note) {
-    const a = cfg.keyInfo.altered[note.letter] || "";
-    if (a === "") {
-      const dir = pick([1, -1]);
-      note.acc = dir > 0 ? "#" : "b";
-      note.midi += dir;
-    } else if (a === "#") {
-      note.acc = "n";
-      note.midi -= 1;
-    } else {
-      note.acc = "n";
-      note.midi += 1;
+    const naturalMidi = (note.octave + 1) * 12 + NAT_SEMI[note.letter];
+    for (const dir of pick([[1, -1], [-1, 1]])) {
+      const newMidi = note.midi + dir;
+      const off = newMidi - naturalMidi;
+      if (off >= -2 && off <= 2) {
+        note.midi = newMidi;
+        note.acc = accForLetter(note.letter, note.octave, newMidi, cfg.keyInfo);
+        return note;
+      }
     }
     return note;
   }
@@ -355,7 +368,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       // add a new note after the current selection
       const dots = dotArmed && currentDur !== "16" ? 1 : 0;
-      const ev = makeNoteEvent(pos.letter, pos.octave, cfg.outkey ? accArmed : "", currentDur, dots);
+      const ev = makeNoteEvent(pos.letter, pos.octave, accArmed, currentDur, dots);
       const at = Math.min(userEvents.length, (selIndex ?? userEvents.length - 1) + 1);
       userEvents.splice(at, 0, ev);
       selIndex = at;
@@ -562,7 +575,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function syncAccVisibility() {
-    $("st-acc-group").classList.toggle("hidden", !hasOpt("outkey"));
+    // Accidentals are needed for out-of-key notes and for the raised degrees
+    // of harmonic/melodic minor.
+    const scale = $("st-scale").value;
+    const needed = hasOpt("outkey") || scale === "harmonicMinor" || scale === "melodicMinor";
+    $("st-acc-group").classList.toggle("hidden", !needed);
   }
 
   // ============================================================
@@ -625,6 +642,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initToggle($("st-rests"), buildPalette);
   initMulti($("st-motion"));
   initToggle($("st-opts"), syncAccVisibility);
+  $("st-scale").addEventListener("change", syncAccVisibility);
   $("st-bars").addEventListener("input", () => ($("st-bars-val").textContent = $("st-bars").value));
   $("st-tempo").addEventListener("input", () => ($("st-tempo-val").textContent = $("st-tempo").value));
 
