@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EarCraft</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>🎹 EarCraft</h1>
+      <div class="subtitle">Intervals · Chords · Melodic Dictation</div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-screen="intervals">Intervals</button>
+      <button class="tab" data-screen="chords">Chords</button>
+      <button class="tab" data-screen="dictation">Melodic Dictation</button>
+    </nav>
+
+    <div id="audio-loader" class="loader hidden">Loading piano samples… (first time only)</div>
+
+    <!-- ==================== INTERVALS ==================== -->
+    <section class="screen active" id="intervals">
+      <div class="card">
+        <div class="settings">
+          <div class="setting-group">
+            <label class="group-label">Intervals to practice</label>
+            <div class="chip-row" id="iv-set"></div>
+          </div>
+          <div class="setting-group">
+            <label class="group-label">Direction</label>
+            <div class="chip-row" id="iv-dir">
+              <div class="chip selected" data-value="ascending">Ascending</div>
+              <div class="chip" data-value="descending">Descending</div>
+              <div class="chip" data-value="harmonic">Harmonic</div>
+              <div class="chip" data-value="random">Random</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stats-bar">
+          <div class="stat"><div class="num" id="iv-correct">0</div><div class="lbl">Correct</div></div>
+          <div class="stat"><div class="num" id="iv-total">0</div><div class="lbl">Attempts</div></div>
+          <div class="stat"><div class="num acc" id="iv-acc">—</div><div class="lbl">Accuracy</div></div>
+          <div class="stat"><div class="num streak" id="iv-streak">0</div><div class="lbl">Streak</div></div>
+        </div>
+
+        <div class="play-area">
+          <div class="play-controls">
+            <button class="btn btn-primary btn-big" id="iv-play">▶ Play interval</button>
+            <button class="btn btn-secondary" id="iv-replay" disabled>↻ Replay</button>
+          </div>
+        </div>
+
+        <div class="answers" id="iv-answers"></div>
+        <div class="feedback" id="iv-feedback"></div>
+        <div class="reveal hidden" id="iv-reveal">
+          <div class="note-names" id="iv-notes"></div>
+          <div class="mini-staff" id="iv-staff"></div>
+        </div>
+        <div class="play-controls" style="margin-top:14px">
+          <button class="btn btn-secondary hidden" id="iv-next">Next →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== CHORDS ==================== -->
+    <section class="screen" id="chords">
+      <div class="card">
+        <div class="settings">
+          <div class="setting-group">
+            <label class="group-label">Chord types</label>
+            <div class="chip-row" id="ch-set"></div>
+          </div>
+          <div class="setting-group">
+            <label class="group-label">Voicing</label>
+            <div class="chip-row" id="ch-style">
+              <div class="chip selected" data-value="block">Block</div>
+              <div class="chip" data-value="arpeggio">Arpeggio</div>
+              <div class="chip" data-value="random">Random</div>
+            </div>
+          </div>
+          <div class="setting-group">
+            <label class="group-label">Inversions</label>
+            <div class="chip-row" id="ch-inv">
+              <div class="chip selected" data-value="0">Root</div>
+              <div class="chip" data-value="1">1st</div>
+              <div class="chip" data-value="2">2nd</div>
+              <div class="chip" data-value="3">3rd</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stats-bar">
+          <div class="stat"><div class="num" id="ch-correct">0</div><div class="lbl">Correct</div></div>
+          <div class="stat"><div class="num" id="ch-total">0</div><div class="lbl">Attempts</div></div>
+          <div class="stat"><div class="num acc" id="ch-acc">—</div><div class="lbl">Accuracy</div></div>
+          <div class="stat"><div class="num streak" id="ch-streak">0</div><div class="lbl">Streak</div></div>
+        </div>
+
+        <div class="play-area">
+          <div class="play-controls">
+            <button class="btn btn-primary btn-big" id="ch-play">▶ Play chord</button>
+            <button class="btn btn-secondary" id="ch-replay" disabled>↻ Replay</button>
+          </div>
+        </div>
+
+        <div class="answers" id="ch-answers"></div>
+        <div class="feedback" id="ch-feedback"></div>
+        <div class="reveal hidden" id="ch-reveal">
+          <div class="note-names" id="ch-notes"></div>
+          <div class="mini-staff" id="ch-staff"></div>
+        </div>
+        <div class="play-controls" style="margin-top:14px">
+          <button class="btn btn-secondary hidden" id="ch-next">Next →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== DICTATION ==================== -->
+    <section class="screen" id="dictation">
+      <div class="tabs submode-tabs" id="dc-submode">
+        <button class="tab active" data-sub="kb">🎹 Keyboard</button>
+        <button class="tab" data-sub="staff">🎼 Staff notation</button>
+      </div>
+
+      <div id="dc-kb-mode">
+      <div class="card">
+        <div class="settings">
+          <div class="setting-group">
+            <label class="group-label">Key</label>
+            <select id="dc-key">
+              <option value="random" selected>Random</option>
+              <option value="60">C</option>
+              <option value="62">D</option>
+              <option value="64">E</option>
+              <option value="65">F</option>
+              <option value="67">G</option>
+              <option value="69">A</option>
+              <option value="71">B</option>
+            </select>
+          </div>
+          <div class="setting-group">
+            <label class="group-label">Scale</label>
+            <select id="dc-scale">
+              <option value="major" selected>Major</option>
+              <option value="minor">Natural Minor</option>
+            </select>
+          </div>
+          <div class="setting-group">
+            <label class="group-label">Length: <span id="dc-len-val">4</span> notes</label>
+            <input type="range" id="dc-len" min="3" max="8" value="4" />
+          </div>
+          <div class="setting-group">
+            <label class="group-label">Tempo: <span id="dc-tempo-val">90</span> bpm</label>
+            <input type="range" id="dc-tempo" min="50" max="140" value="90" />
+          </div>
+          <div class="setting-group">
+            <label class="group-label">Labels</label>
+            <div class="chip-row" id="dc-label">
+              <div class="chip selected" data-value="note">Note names</div>
+              <div class="chip" data-value="solfege">Solfège</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stats-bar">
+          <div class="stat"><div class="num" id="dc-correct">0</div><div class="lbl">Perfect</div></div>
+          <div class="stat"><div class="num" id="dc-total">0</div><div class="lbl">Melodies</div></div>
+          <div class="stat"><div class="num acc" id="dc-acc">—</div><div class="lbl">Note accuracy</div></div>
+          <div class="stat"><div class="num streak" id="dc-streak">0</div><div class="lbl">Streak</div></div>
+        </div>
+
+        <div class="play-area">
+          <div class="play-controls">
+            <button class="btn btn-primary btn-big" id="dc-play">▶ New melody</button>
+            <button class="btn btn-secondary" id="dc-replay" disabled>↻ Replay</button>
+          </div>
+          <div class="hint" id="dc-hint">Press “New melody”, listen, then click the keys to transcribe what you heard.</div>
+        </div>
+
+        <div class="dictation-io hidden" id="dc-io">
+          <div class="token-row" id="dc-tokens">
+            <span class="token-placeholder">Your answer will appear here…</span>
+          </div>
+          <div class="play-controls" style="margin-top:12px">
+            <button class="btn btn-secondary" id="dc-back">⌫ Backspace</button>
+            <button class="btn btn-secondary" id="dc-clear">Clear</button>
+            <button class="btn btn-primary" id="dc-check" disabled>Check answer</button>
+          </div>
+          <div class="piano-wrap" style="margin-top:16px">
+            <div class="piano" id="dc-piano"></div>
+          </div>
+        </div>
+
+        <div class="feedback" id="dc-feedback"></div>
+      </div>
+      </div><!-- /dc-kb-mode -->
+
+      <!-- ---------- STAFF NOTATION SUB-MODE ---------- -->
+      <div id="dc-staff-mode" class="hidden">
+        <div class="card">
+          <div class="settings">
+            <div class="setting-group">
+              <label class="group-label">Key</label>
+              <select id="st-key">
+                <option value="60">C</option>
+                <option value="62">D</option>
+                <option value="64">E</option>
+                <option value="65">F</option>
+                <option value="67">G</option>
+                <option value="69">A</option>
+                <option value="71">B</option>
+              </select>
+            </div>
+            <div class="setting-group">
+              <label class="group-label">Scale</label>
+              <select id="st-scale">
+                <option value="major" selected>Major</option>
+                <option value="minor">Natural Minor</option>
+              </select>
+            </div>
+            <div class="setting-group">
+              <label class="group-label">Time signature</label>
+              <select id="st-time">
+                <option value="2/4">2/4</option>
+                <option value="3/4">3/4</option>
+                <option value="4/4" selected>4/4</option>
+                <option value="6/8">6/8</option>
+              </select>
+            </div>
+            <div class="setting-group">
+              <label class="group-label">Bars: <span id="st-bars-val">2</span></label>
+              <input type="range" id="st-bars" min="1" max="8" value="2" />
+            </div>
+            <div class="setting-group">
+              <label class="group-label">Tempo: <span id="st-tempo-val">90</span> bpm</label>
+              <input type="range" id="st-tempo" min="50" max="140" value="90" />
+            </div>
+          </div>
+          <div class="settings" style="margin-top:18px">
+            <div class="setting-group">
+              <label class="group-label">Note values</label>
+              <div class="chip-row" id="st-durations">
+                <div class="chip" data-value="w">Whole</div>
+                <div class="chip selected" data-value="h">Half</div>
+                <div class="chip selected" data-value="q">Quarter</div>
+                <div class="chip selected" data-value="8">Eighth</div>
+                <div class="chip" data-value="16">16th</div>
+              </div>
+            </div>
+            <div class="setting-group">
+              <label class="group-label">Rest values</label>
+              <div class="chip-row" id="st-rests">
+                <div class="chip" data-value="w">Whole</div>
+                <div class="chip" data-value="h">Half</div>
+                <div class="chip" data-value="q">Quarter</div>
+                <div class="chip" data-value="8">Eighth</div>
+                <div class="chip" data-value="16">16th</div>
+              </div>
+            </div>
+            <div class="setting-group">
+              <label class="group-label">Options</label>
+              <div class="chip-row" id="st-opts">
+                <div class="chip" data-value="dotted">Dotted</div>
+                <div class="chip" data-value="outkey">Allow out-of-key</div>
+                <div class="chip selected" data-value="tonic">Start on tonic</div>
+              </div>
+            </div>
+            <div class="setting-group">
+              <label class="group-label">Melodic motion</label>
+              <div class="chip-row" id="st-motion">
+                <div class="chip selected" data-value="steps">Steps</div>
+                <div class="chip selected" data-value="leaps">Leaps</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="stats-bar">
+            <div class="stat"><div class="num" id="st-correct">0</div><div class="lbl">Perfect</div></div>
+            <div class="stat"><div class="num" id="st-total">0</div><div class="lbl">Melodies</div></div>
+            <div class="stat"><div class="num acc" id="st-acc">—</div><div class="lbl">Note accuracy</div></div>
+            <div class="stat"><div class="num streak" id="st-streak">0</div><div class="lbl">Streak</div></div>
+          </div>
+
+          <div class="play-area">
+            <div class="play-controls">
+              <button class="btn btn-primary btn-big" id="st-play">▶ New melody</button>
+              <button class="btn btn-secondary" id="st-replay" disabled>↻ Replay</button>
+            </div>
+            <div class="hint" id="st-hint">
+              Press “New melody”, listen, then build it on the staff below.
+              The key signature and the first note are given.
+            </div>
+          </div>
+
+          <div class="staff-io hidden" id="st-io">
+            <div class="staff-scroll" id="st-staff"></div>
+            <div class="edit-hint" id="st-edit-hint">
+              Tap the staff to add a note. Tap a note to select it (orange), then adjust it below.
+            </div>
+
+            <div class="editor">
+              <div class="editor-row" id="st-dur-palette"></div>
+              <div class="editor-row">
+                <button class="pal-btn wide" id="st-lower">▼ Lower</button>
+                <button class="pal-btn wide" id="st-higher">▲ Higher</button>
+                <span class="palette-group hidden" id="st-acc-group">
+                  <button class="pal-btn" data-acc="#">♯</button>
+                  <button class="pal-btn" data-acc="b">♭</button>
+                  <button class="pal-btn" data-acc="n">♮</button>
+                </span>
+              </div>
+              <div class="editor-row">
+                <button class="pal-btn" id="st-prev">‹ Prev</button>
+                <button class="pal-btn" id="st-next">Next ›</button>
+                <button class="pal-btn" id="st-rest">Add rest</button>
+                <button class="pal-btn danger" id="st-del">Delete</button>
+              </div>
+            </div>
+
+            <div class="play-controls" style="margin-top:16px">
+              <button class="btn btn-secondary" id="st-clear">Clear</button>
+              <button class="btn btn-secondary" id="st-hear">▶ Hear my answer</button>
+              <button class="btn btn-primary" id="st-check">Check answer</button>
+            </div>
+
+            <div class="answer-block hidden" id="st-answer-block">
+              <div class="answer-label">Correct answer</div>
+              <div class="staff-scroll" id="st-answer-staff"></div>
+            </div>
+          </div>
+
+          <div class="feedback" id="st-feedback"></div>
+        </div>
+      </div><!-- /dc-staff-mode -->
+    </section>
+
+    <footer class="app-footer">
+      Piano samples:
+      <a href="https://archive.org/details/SalamanderGrandPianoV3" target="_blank" rel="noopener noreferrer">Salamander Grand Piano</a>
+      by Alexander Holm, licensed
+      <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a>.
+    </footer>
+  </div>
+
+  <!-- Pinned exact versions for reproducibility & security -->
+  <script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vexflow@5.0.0/build/cjs/vexflow.js"></script>
+  <script src="theory.js"></script>
+  <script src="audio.js"></script>
+  <script src="app.js"></script>
+  <script src="staff.js"></script>
+</body>
+</html>
