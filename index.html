@@ -2,14 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>EarCraft</title>
+
+  <!-- Installable web app (PWA): Android/Chrome reads the manifest; iOS uses the
+       apple-touch-icon and apple-mobile-web-app-* tags below. -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#4338ca" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="EarCraft" />
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="app">
     <header class="app-header">
-      <h1>🎹 EarCraft</h1>
+      <h1><img class="title-icon" src="icon-192.png" alt="" width="36" height="36" /> EarCraft</h1>
       <div class="subtitle">Intervals · Chords · Melodic Dictation</div>
     </header>
 

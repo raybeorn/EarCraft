@@ -44,6 +44,15 @@ header.app-header h1 {
   font-size: 30px;
   letter-spacing: 0.5px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+header.app-header h1 .title-icon {
+  width: 1.15em;
+  height: 1.15em;
+  border-radius: 22%;
+  vertical-align: middle;
 }
 header.app-header .subtitle {
   color: var(--text-dim);

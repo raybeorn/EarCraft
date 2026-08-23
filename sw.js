@@ -15,7 +15,7 @@
  * CORS-safelisted response header and tracks the same file change.)
  */
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const SHELL_CACHE = "earcraft-shell-" + CACHE_VERSION;
 const SAMPLES_CACHE = "earcraft-samples-" + CACHE_VERSION;
 
@@ -35,6 +35,8 @@ const SAMPLE_URLS = SAMPLE_FILES.map((f) => SAMPLE_BASE + f);
 const SHELL_ASSETS = [
   "./", "./index.html", "./styles.css",
   "./theory.js", "./audio.js", "./app.js", "./staff.js",
+  "./manifest.json",
+  "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png",
   "https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js",
   "https://cdn.jsdelivr.net/npm/vexflow@5.0.0/build/cjs/vexflow.js",
 ];
