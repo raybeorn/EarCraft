@@ -2,32 +2,35 @@
 
 EarCraft is a browser ear training app.
 
+Try it out @ https://raybeorn.github.io/EarCraft/
+
 ## Staff selector
 
-A single **Staff** control at the top of the app sets which staff every mode uses
-to display notes: Treble, Bass, Alto, Tenor, or Grand. The default is Grand.
+Each mode has a Staff control in its Options section. The control sets the staff
+for every mode. All copies show the same value. The choices are Treble, Bass,
+Alto, Tenor, and Grand. The default is Grand. You can collapse each Options
+section. It starts open.
 
-The selection also limits which notes the app generates: notes stay within four
-diatonic steps above the top line or below the bottom line of the selected staff.
-For Grand, that range spans from just below the bass staff to just above the
-treble staff. The Intervals and Chords reveal staves and the Staff dictation mode
-all follow this setting. A change takes effect on the next item you generate
-(the next interval, chord, or melody).
+The Staff control also limits the notes the app generates. Notes stay within
+four diatonic steps above the top line or below the bottom line of the staff.
+On a Grand staff, the range covers both staves. The Intervals staff, the Chords
+staff, and the Staff dictation mode use this setting. A change takes effect on
+the next interval, chord, or melody.
 
 ## Modes
 
 ### Intervals
 
 Identify harmonic and melodic intervals from the minor 2nd to the octave.
-Choose one or more directions to practice: ascending, descending, or harmonic.
-The app picks randomly among the directions you selected.
+Choose one or more directions: ascending, descending, or harmonic.
+For each interval, the app uses one of the directions you selected.
 After you answer, the app shows the notes as names and on a small staff.
 
 ### Chords
 
 Identify the chord quality. The app supports major, minor, diminished, augmented,
-and 7th chords. Choose one or more voicings: block, arpeggio, or both. The app
-picks randomly among the voicings you selected.
+and 7th chords. Choose one or more voicings: block or arpeggio.
+For each chord, the app uses one of the voicings you selected.
 You can select which inversions to use: root, 1st, 2nd, and 3rd.
 The app uses the 3rd inversion only for 7th chords.
 After you answer, the app shows the notes and the inversion.
@@ -37,13 +40,12 @@ After you answer, the app shows the notes and the inversion.
 This mode has two sub-modes.
 
 Keyboard sub-mode: Listen to a short melody. Enter the melody on the on-screen piano keyboard.
-This sub-mode has no staff, so the Staff selector does not affect it.
+This sub-mode has no staff. The Staff control does not affect it.
 
-Staff sub-mode: The app gives you the key signature and the first note on the staff you
-selected with the Staff control. Listen to the melody. Enter the rhythm and the pitch.
-To enter a note, select a note value. Then click a pitch on the staff. On a Grand staff,
-click the upper staff for treble pitches or the lower staff for bass pitches.
-You can set these options:
+Staff sub-mode: The app shows the key signature and the first note on the selected staff.
+Listen to the melody. Enter the rhythm and the pitch. To enter a note, select a note value.
+Then click a pitch on the staff. On a Grand staff, click the upper staff for treble pitches.
+Click the lower staff for bass pitches. You can set these options:
 
 - Key and scale.
 - Time signature: 2/4, 3/4, 4/4, or 6/8.
@@ -70,8 +72,24 @@ node server.js
 
 Open <http://localhost:8123> in a browser.
 
-The app downloads the piano samples from a CDN the first time you press a play button.
-An internet connection is necessary for this download. The browser then caches the samples.
+The app needs an internet connection on the first visit. On that visit it downloads
+the piano samples and the two CDN scripts. After the first visit the app works
+offline. See [Offline support](#offline-support).
+
+## Offline support
+
+The app registers a service worker, `sw.js`. On the first online visit the service
+worker stores the app files, the two CDN scripts, and the piano samples in the
+browser cache. After that visit the app works offline.
+
+The app files use a network-first rule. When online, the app loads the latest
+code. When offline, the app uses the cache. The CDN scripts and the samples use a
+cache-first rule.
+
+Once a day the service worker checks the samples in the background. It compares the
+`Last-Modified` header of each file. It downloads only the files that changed.
+
+To replace the cached app files and CDN scripts, raise `CACHE_VERSION` in `sw.js`.
 
 ## Build
 
@@ -81,20 +99,22 @@ An internet connection is necessary for this download. The browser then caches t
 
 ### Subresource Integrity
 
-The two CDN scripts in `index.html` (Tone.js and VexFlow) carry SHA-384
-[Subresource Integrity](https://developer.mozilla.org/docs/Web/Security/Subresource_Integrity)
-hashes. The browser refuses to run a script whose delivered bytes do not match its
-`integrity` hash, which protects against a tampered or compromised CDN. Each script
-also uses `crossorigin="anonymous"` (required for the check) and
-`referrerpolicy="no-referrer"`.
+The `index.html` file loads two scripts from a CDN: Tone.js and VexFlow.
+Each script tag has a SHA-384 Subresource Integrity hash. The browser blocks a
+script when the downloaded bytes do not match its `integrity` hash. This protects
+the app against a changed or unsafe CDN file. Each script tag also sets
+`crossorigin="anonymous"` and `referrerpolicy="no-referrer"`. The check needs the
+`crossorigin` attribute.
 
-If you bump either version, regenerate its hash or the browser will block the script:
+If you change either version, generate a new hash. Otherwise the browser blocks
+the script. Run this command:
 
 ```bash
 curl -sL <script-url> | openssl dgst -sha384 -binary | openssl base64 -A
 ```
 
-Prefix the output with `sha384-` and put it in the matching `integrity=""` attribute.
+Add the prefix `sha384-` to the output. Put the result in the `integrity`
+attribute for that script.
 
 ## Credits
 
@@ -116,4 +136,5 @@ The app loads all three from a CDN. It does not include their files in this repo
 | `audio.js`   | Piano sample engine |
 | `app.js`     | Intervals, chords, and keyboard dictation logic |
 | `staff.js`   | Staff notation dictation logic |
+| `sw.js`      | Service worker for offline use |
 | `server.js`  | Static file server for local use |

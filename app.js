@@ -58,7 +58,19 @@ document.addEventListener("DOMContentLoaded", () => {
   // Diatonic index of each clef's top staff line (bottom line = top - 8).
   const CLEF_TOP_IDX = { treble: 38, bass: 26, alto: 32, tenor: 30 };
   const CLEF_REST_KEY = { treble: "b/4", bass: "d/3", alto: "c/4", tenor: "a/3" };
-  const clefMode = () => ($("app-clef") ? $("app-clef").value : "grand");
+  const clefMode = () => {
+    const el = document.querySelector(".clef-select");
+    return el ? el.value : "grand";
+  };
+  // The Staff selector appears in each mode's options. Keep the copies in sync
+  // so the choice is shared across every staff in the app.
+  document.querySelectorAll(".clef-select").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      document.querySelectorAll(".clef-select").forEach((s) => {
+        if (s !== sel) s.value = sel.value;
+      });
+    });
+  });
   function idxToMidi(idx) {
     const octave = Math.floor(idx / 7);
     const letter = LETTERS[((idx % 7) + 7) % 7];

@@ -28,7 +28,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const top = CLEF_TOP_IDX[mode];
     return { lo: top - 8 - 4, hi: top + 4 };
   }
-  const clefModeVal = () => ($("app-clef") ? $("app-clef").value : "grand");
+  const clefModeVal = () => {
+    const el = document.querySelector(".clef-select");
+    return el ? el.value : "grand";
+  };
 
   function buildKeyInfo(tonicPc, mode) {
     const n = mode === "major" ? MAJOR_ACC[tonicPc] : MAJOR_ACC[(tonicPc + 3) % 12];

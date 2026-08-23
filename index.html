@@ -19,24 +19,23 @@
       <button class="tab" data-screen="dictation">Melodic Dictation</button>
     </nav>
 
-    <div class="clef-bar">
-      <label class="group-label" for="app-clef">Staff</label>
-      <select id="app-clef">
-        <option value="treble">Treble</option>
-        <option value="bass">Bass</option>
-        <option value="alto">Alto</option>
-        <option value="tenor">Tenor</option>
-        <option value="grand" selected>Grand</option>
-      </select>
-      <span class="clef-note">applies to every staff — notes stay within 4 steps of the staff</span>
-    </div>
-
     <div id="audio-loader" class="loader hidden">Loading piano samples… (first time only)</div>
 
     <!-- ==================== INTERVALS ==================== -->
     <section class="screen active" id="intervals">
-      <div class="card">
+      <details class="card settings-card" open>
+        <summary class="settings-summary">Options</summary>
         <div class="settings">
+          <div class="setting-group">
+            <label class="group-label">Staff</label>
+            <select class="clef-select">
+              <option value="treble">Treble</option>
+              <option value="bass">Bass</option>
+              <option value="alto">Alto</option>
+              <option value="tenor">Tenor</option>
+              <option value="grand" selected>Grand</option>
+            </select>
+          </div>
           <div class="setting-group">
             <label class="group-label">Intervals to practice</label>
             <div class="chip-row" id="iv-set"></div>
@@ -50,7 +49,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </details>
 
       <div class="card">
         <div class="stats-bar">
@@ -81,8 +80,19 @@
 
     <!-- ==================== CHORDS ==================== -->
     <section class="screen" id="chords">
-      <div class="card">
+      <details class="card settings-card" open>
+        <summary class="settings-summary">Options</summary>
         <div class="settings">
+          <div class="setting-group">
+            <label class="group-label">Staff</label>
+            <select class="clef-select">
+              <option value="treble">Treble</option>
+              <option value="bass">Bass</option>
+              <option value="alto">Alto</option>
+              <option value="tenor">Tenor</option>
+              <option value="grand" selected>Grand</option>
+            </select>
+          </div>
           <div class="setting-group">
             <label class="group-label">Chord types</label>
             <div class="chip-row" id="ch-set"></div>
@@ -104,7 +114,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </details>
 
       <div class="card">
         <div class="stats-bar">
@@ -141,7 +151,8 @@
       </div>
 
       <div id="dc-kb-mode">
-      <div class="card">
+      <details class="card settings-card" open>
+        <summary class="settings-summary">Options</summary>
         <div class="settings">
           <div class="setting-group">
             <label class="group-label">Key</label>
@@ -181,7 +192,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </details>
 
       <div class="card">
         <div class="stats-bar">
@@ -219,8 +230,19 @@
 
       <!-- ---------- STAFF NOTATION SUB-MODE ---------- -->
       <div id="dc-staff-mode" class="hidden">
-        <div class="card">
+        <details class="card settings-card" open>
+          <summary class="settings-summary">Options</summary>
           <div class="settings">
+            <div class="setting-group">
+              <label class="group-label">Staff</label>
+              <select class="clef-select">
+                <option value="treble">Treble</option>
+                <option value="bass">Bass</option>
+                <option value="alto">Alto</option>
+                <option value="tenor">Tenor</option>
+                <option value="grand" selected>Grand</option>
+              </select>
+            </div>
             <div class="setting-group">
               <label class="group-label">Key</label>
               <select id="st-key">
@@ -297,7 +319,7 @@
               </div>
             </div>
           </div>
-        </div>
+        </details>
 
         <div class="card">
           <div class="stats-bar">
@@ -386,5 +408,23 @@
   <script src="audio.js"></script>
   <script src="app.js"></script>
   <script src="staff.js"></script>
+
+  <!-- Register the service worker for offline use, then ask it to revalidate
+       the cached piano samples in the background (throttled to once a day). -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").then(() => {
+          const ping = () => {
+            if (navigator.serviceWorker.controller) {
+              navigator.serviceWorker.controller.postMessage({ type: "revalidate-samples" });
+            }
+          };
+          if (navigator.serviceWorker.controller) ping();
+          else navigator.serviceWorker.addEventListener("controllerchange", ping, { once: true });
+        }).catch(() => { /* offline or unsupported: app still works online */ });
+      });
+    }
+  </script>
 </body>
 </html>
