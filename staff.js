@@ -773,6 +773,10 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshInputStaff();
   });
   $("st-check").addEventListener("click", check);
+  $("st-reset").addEventListener("click", () => {
+    stats.correct = stats.total = stats.notesRight = stats.notesTotal = stats.streak = 0;
+    updateStats();
+  });
   $("st-lower").addEventListener("click", () => nudgePitch(-1));
   $("st-higher").addEventListener("click", () => nudgePitch(1));
   $("st-prev").addEventListener("click", () => moveSel(-1));

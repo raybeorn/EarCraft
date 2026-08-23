@@ -191,6 +191,15 @@ input[type="range"] { accent-color: var(--accent-2); }
 .btn-big { font-size: 18px; padding: 16px 30px; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* "Clear scores" — a de-emphasized action sitting beside Replay */
+.clear-scores {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  font-size: 14px;
+}
+.clear-scores:hover { color: var(--bad); border-color: var(--bad); }
+
 .play-controls { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
 
 /* Answer buttons */

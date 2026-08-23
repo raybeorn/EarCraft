@@ -307,6 +307,10 @@ document.addEventListener("DOMContentLoaded", () => {
       await ensureAudio();
       playCurrent();
     });
+    $("iv-reset").addEventListener("click", () => {
+      stats.correct = stats.total = stats.streak = 0;
+      updateStats();
+    });
 
     buildAnswers();
   })();
@@ -460,6 +464,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!current) return;
       await ensureAudio();
       playCurrent();
+    });
+    $("ch-reset").addEventListener("click", () => {
+      stats.correct = stats.total = stats.streak = 0;
+      updateStats();
     });
 
     buildAnswers();
@@ -688,5 +696,9 @@ document.addEventListener("DOMContentLoaded", () => {
       renderTokens();
     });
     checkBtn.addEventListener("click", check);
+    $("dc-reset").addEventListener("click", () => {
+      stats.correct = stats.total = stats.notesRight = stats.notesTotal = stats.streak = 0;
+      updateStats();
+    });
   })();
 });
