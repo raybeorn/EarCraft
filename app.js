@@ -52,6 +52,27 @@ document.addEventListener("DOMContentLoaded", () => {
     return Math.round((correct / total) * 100) + "%";
   }
 
+  // ---------- clef / staff range (shared by every staff) ----------
+  const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
+  const NAT_SEMI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  // Diatonic index of each clef's top staff line (bottom line = top - 8).
+  const CLEF_TOP_IDX = { treble: 38, bass: 26, alto: 32, tenor: 30 };
+  const CLEF_REST_KEY = { treble: "b/4", bass: "d/3", alto: "c/4", tenor: "a/3" };
+  const clefMode = () => ($("app-clef") ? $("app-clef").value : "grand");
+  function idxToMidi(idx) {
+    const octave = Math.floor(idx / 7);
+    const letter = LETTERS[((idx % 7) + 7) % 7];
+    return (octave + 1) * 12 + NAT_SEMI[letter];
+  }
+  // MIDI window that keeps notes within 4 diatonic steps of the selected staff.
+  function clefMidiRange() {
+    const mode = clefMode();
+    let lo, hi;
+    if (mode === "grand") { lo = CLEF_TOP_IDX.bass - 8 - 4; hi = CLEF_TOP_IDX.treble + 4; }
+    else { const t = CLEF_TOP_IDX[mode]; lo = t - 8 - 4; hi = t + 4; }
+    return { mode, midiLo: idxToMidi(lo), midiHi: idxToMidi(hi) };
+  }
+
   // ---------- mini staff (for note reveal) ----------
   const VEX_PC = ["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"];
   function midiToVexKey(m) {
@@ -59,25 +80,63 @@ document.addEventListener("DOMContentLoaded", () => {
     const oct = Math.floor(m / 12) - 1;
     return VEX_PC[pc] + "/" + oct;
   }
+  function miniNote(VF, keys, clef) {
+    const n = new VF.StaveNote({ keys, duration: "w", clef });
+    keys.forEach((k, i) => { if (k.includes("#")) n.addModifier(new VF.Accidental("#"), i); });
+    return n;
+  }
+  function miniRest(VF, clef) {
+    const n = new VF.StaveNote({ keys: [CLEF_REST_KEY[clef] || "b/4"], duration: "wr", clef });
+    n.setStyle({ fillStyle: "rgba(0,0,0,0)", strokeStyle: "rgba(0,0,0,0)" });
+    return n;
+  }
   // groups: array of midi-arrays; each group renders as one whole-note (chords stack).
+  // Honors the app-wide clef selector, drawing a grand staff when "grand" is chosen.
   function renderMiniStaff(container, groups) {
     const VF = window.VexFlow;
     container.innerHTML = "";
-    const w = Math.max(150, 70 + groups.length * 58);
+    const grand = clefMode() === "grand";
+    const w = Math.max(160, 90 + groups.length * 58);
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(w, 120);
+    renderer.resize(w, grand ? 200 : 130);
     const ctx = renderer.getContext();
-    const stave = new VF.Stave(6, 8, w - 12).addClef("treble");
+    const numBeats = groups.length * 4;
+
+    if (grand) {
+      const tStave = new VF.Stave(6, 16, w - 12).addClef("treble");
+      const bStave = new VF.Stave(6, 96, w - 12).addClef("bass");
+      tStave.setContext(ctx).draw();
+      bStave.setContext(ctx).draw();
+      new VF.StaveConnector(tStave, bStave).setType("brace").setContext(ctx).draw();
+      new VF.StaveConnector(tStave, bStave).setType("singleLeft").setContext(ctx).draw();
+      new VF.StaveConnector(tStave, bStave).setType("singleRight").setContext(ctx).draw();
+      const tTokens = [], bTokens = [];
+      groups.forEach((midis) => {
+        const sorted = [...midis].sort((a, b) => a - b);
+        const tk = sorted.filter((m) => m >= 60).map(midiToVexKey);
+        const bk = sorted.filter((m) => m < 60).map(midiToVexKey);
+        tTokens.push(tk.length ? miniNote(VF, tk, "treble") : miniRest(VF, "treble"));
+        bTokens.push(bk.length ? miniNote(VF, bk, "bass") : miniRest(VF, "bass"));
+      });
+      const tVoice = new VF.Voice({ numBeats, beatValue: 4 });
+      const bVoice = new VF.Voice({ numBeats, beatValue: 4 });
+      [tVoice, bVoice].forEach((v) => { if (VF.Voice.Mode) v.setMode(VF.Voice.Mode.SOFT); else v.setStrict(false); });
+      tVoice.addTickables(tTokens);
+      bVoice.addTickables(bTokens);
+      new VF.Formatter().joinVoices([tVoice]).joinVoices([bVoice]).format([tVoice, bVoice], w - 70);
+      tVoice.draw(ctx, tStave);
+      bVoice.draw(ctx, bStave);
+      return;
+    }
+
+    const mode = clefMode();
+    const stave = new VF.Stave(6, 30, w - 12).addClef(mode);
     stave.setContext(ctx).draw();
     const notes = groups.map((midis) => {
       const sorted = [...midis].sort((a, b) => a - b);
-      const n = new VF.StaveNote({ keys: sorted.map(midiToVexKey), duration: "w", clef: "treble" });
-      sorted.forEach((m, i) => {
-        if (midiToVexKey(m).includes("#")) n.addModifier(new VF.Accidental("#"), i);
-      });
-      return n;
+      return miniNote(VF, sorted.map(midiToVexKey), mode);
     });
-    const voice = new VF.Voice({ numBeats: groups.length * 4, beatValue: 4 });
+    const voice = new VF.Voice({ numBeats, beatValue: 4 });
     if (VF.Voice.Mode) voice.setMode(VF.Voice.Mode.SOFT);
     else voice.setStrict(false);
     voice.addTickables(notes);
@@ -115,7 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let answered = false;
 
     // default selected intervals: the common ones
-    const defaultOn = new Set([2, 4, 5, 7, 9, 12]);
+    const defaultOn = new Set([2, 4, 5, 7, 9, 11, 12]); // M2 M3 P4 P5 M6 M7 P8
     INTERVALS.forEach((iv) => {
       const chip = document.createElement("div");
       chip.className = "chip" + (defaultOn.has(iv.semitones) ? " selected" : "");
@@ -125,7 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setRow.appendChild(chip);
     });
     initMultiChips(setRow);
-    initSingleChips(dirRow);
+    initMultiChips(dirRow);
     setRow.addEventListener("click", buildAnswers);
 
     function selectedIntervals() {
@@ -146,9 +205,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function resolveDirection() {
-      let d = chipRowValue(dirRow);
-      if (d === "random") d = pick(["harmonic", "ascending", "descending"]);
-      return d;
+      // pick randomly among the directions the user selected
+      const chosen = chipRowValues(dirRow);
+      return pick(chosen.length ? chosen : ["ascending"]);
     }
 
     async function newQuestion() {
@@ -156,7 +215,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const chosen = selectedIntervals();
       const st = pick(chosen);
       const iv = INTERVALS.find((x) => x.semitones === st);
-      const low = randInt(55, 64); // G3..E4 comfortable range
+      // keep both notes within the selected staff's range
+      const { midiLo, midiHi } = clefMidiRange();
+      const low = randInt(midiLo, Math.max(midiLo, midiHi - st));
       current = { intervalObj: iv, low, high: low + st, direction: resolveDirection() };
       answered = false;
       feedbackEl.textContent = "";
@@ -266,7 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setRow.appendChild(chip);
     });
     initMultiChips(setRow);
-    initSingleChips(styleRow);
+    initMultiChips(styleRow);
     initMultiChips(invRow);
     setRow.addEventListener("click", buildAnswers);
 
@@ -295,25 +356,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function resolveStyle() {
-      let s = chipRowValue(styleRow);
-      if (s === "random") s = pick(["block", "arpeggio"]);
-      return s;
+      // pick randomly among the voicings the user selected
+      const chosen = chipRowValues(styleRow);
+      return pick(chosen.length ? chosen : ["block"]);
     }
 
     async function newQuestion() {
       await ensureAudio();
       const id = pick(selectedChords());
       const chord = CHORDS.find((c) => c.id === id);
-      const root = randInt(52, 60); // E3..C4
       // pick an inversion valid for this chord's size (triad: 0-2, 7th: 0-3)
       const maxInv = chord.intervals.length - 1;
       const invChoices = selectedInversions().filter((k) => k <= maxInv);
       const inversion = invChoices.length ? pick(invChoices) : 0;
+      // voicing as offsets from the root, then place the root so the whole
+      // chord fits within the selected staff's range
+      const rel = applyInversion(chord.intervals.slice(), inversion);
+      const offMin = Math.min(...rel), offMax = Math.max(...rel);
+      const { midiLo, midiHi } = clefMidiRange();
+      const loB = midiLo - offMin;
+      const root = randInt(loB, Math.max(loB, midiHi - offMax));
       current = {
         chord,
         root,
         inversion,
-        midis: applyInversion(chord.intervals.map((i) => root + i), inversion),
+        midis: rel.map((o) => root + o),
         style: resolveStyle(),
       };
       answered = false;

@@ -19,6 +19,18 @@
       <button class="tab" data-screen="dictation">Melodic Dictation</button>
     </nav>
 
+    <div class="clef-bar">
+      <label class="group-label" for="app-clef">Staff</label>
+      <select id="app-clef">
+        <option value="treble">Treble</option>
+        <option value="bass">Bass</option>
+        <option value="alto">Alto</option>
+        <option value="tenor">Tenor</option>
+        <option value="grand" selected>Grand</option>
+      </select>
+      <span class="clef-note">applies to every staff — notes stay within 4 steps of the staff</span>
+    </div>
+
     <div id="audio-loader" class="loader hidden">Loading piano samples… (first time only)</div>
 
     <!-- ==================== INTERVALS ==================== -->
@@ -35,7 +47,6 @@
               <div class="chip selected" data-value="ascending">Ascending</div>
               <div class="chip" data-value="descending">Descending</div>
               <div class="chip" data-value="harmonic">Harmonic</div>
-              <div class="chip" data-value="random">Random</div>
             </div>
           </div>
         </div>
@@ -81,7 +92,6 @@
             <div class="chip-row" id="ch-style">
               <div class="chip selected" data-value="block">Block</div>
               <div class="chip" data-value="arpeggio">Arpeggio</div>
-              <div class="chip" data-value="random">Random</div>
             </div>
           </div>
           <div class="setting-group">
@@ -358,9 +368,20 @@
     </footer>
   </div>
 
-  <!-- Pinned exact versions for reproducibility & security -->
-  <script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vexflow@5.0.0/build/cjs/vexflow.js"></script>
+  <!-- Pinned exact versions with Subresource Integrity (SHA-384) for reproducibility & security.
+       If you bump either version below, regenerate its integrity hash or the browser will block the script:
+         curl -sL <script-url> | openssl dgst -sha384 -binary | openssl base64 -A
+       Then prefix the output with "sha384-" in the matching integrity="" attribute. -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js"
+    integrity="sha384-NWoslxaf/3dYwQk+uGziDYJFdsjBpVlU1WpFRexuDFcIk/5PJpCbpVXia2Uikeix"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/vexflow@5.0.0/build/cjs/vexflow.js"
+    integrity="sha384-CqssDDrB0gDzmUGwU/TPip4CJOQif4qWkW+w31xtNqLV34D7utsq7O4N7uBAtF9u"
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
   <script src="theory.js"></script>
   <script src="audio.js"></script>
   <script src="app.js"></script>

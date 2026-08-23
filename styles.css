@@ -137,6 +137,20 @@ select, input[type="number"] {
 .range-row { display: flex; align-items: center; gap: 10px; }
 input[type="range"] { accent-color: var(--accent-2); }
 
+.clef-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin: 0 0 18px;
+}
+.clef-bar .group-label { margin: 0; }
+.clef-bar .clef-note { color: var(--text-dim); font-size: 12.5px; }
+
 /* Play / action area */
 .play-area {
   text-align: center;

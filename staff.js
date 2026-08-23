@@ -15,6 +15,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const SHARP_ORDER = ["F", "C", "G", "D", "A", "E", "B"];
   const FLAT_ORDER = ["B", "E", "A", "D", "G", "C", "F"];
 
+  // ---------- clefs ----------
+  // Diatonic index = octave*7 + letterIndex (C=0 … B=6). Each value below is the
+  // diatonic index of the clef's TOP staff line (bottom line = top - 8).
+  const CLEF_TOP_IDX = { treble: 38 /*F5*/, bass: 26 /*A3*/, alto: 32 /*G4*/, tenor: 30 /*E4*/ };
+  const CLEF_REST_KEY = { treble: "b/4", bass: "d/3", alto: "c/4", tenor: "a/3" };
+
+  // Allowed pitch range: up to 4 diatonic steps above the top line and 4 below
+  // the bottom line of the selected staff (both staves, for grand).
+  function clefRange(mode) {
+    if (mode === "grand") return { lo: CLEF_TOP_IDX.bass - 8 - 4, hi: CLEF_TOP_IDX.treble + 4 };
+    const top = CLEF_TOP_IDX[mode];
+    return { lo: top - 8 - 4, hi: top + 4 };
+  }
+  const clefModeVal = () => ($("app-clef") ? $("app-clef").value : "grand");
+
   function buildKeyInfo(tonicPc, mode) {
     const n = mode === "major" ? MAJOR_ACC[tonicPc] : MAJOR_ACC[(tonicPc + 3) % 12];
     const altered = {};
@@ -170,7 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const beatsPerMeasure = num * (4 / den); // quarter units
     const measure16 = beatsPerMeasure * 4;
     const bars = Number($("st-bars").value);
-    const tonicMidi = Number($("st-key").value);
+    const clefMode = clefModeVal();
     const scaleKey = $("st-scale").value;
     const enabled = selVals($("st-durations"));
     const restVals = selVals($("st-rests"));
@@ -180,15 +195,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const motion = selVals($("st-motion"));
     const steps = motion.includes("steps");
     const leaps = motion.includes("leaps");
-    const tonicPc = tonicMidi % 12;
+    const tonicPc = Number($("st-key").value) % 12;
+
+    // Place the tonic so the melody sits centered in the selected staff's range,
+    // then express the range as min/max scale-degree offsets from the tonic.
+    const range = clefRange(clefMode);
+    const tonicLetterIndex = letterIndexOfPc(tonicPc);
+    const center = (range.lo + range.hi) / 2;
+    const tonicOctave = Math.round((center - tonicLetterIndex) / 7);
+    const tonicBaseIdx = tonicOctave * 7 + tonicLetterIndex;
+    const tonicMidi = (tonicOctave + 1) * 12 + NAT_SEMI[LETTERS[tonicLetterIndex]];
 
     cfg = {
       num, den, beatsPerMeasure, bars, tonicMidi, scaleKey,
-      tonicLetterIndex: letterIndexOfPc(tonicPc),
-      tonicOctave: Math.floor(tonicMidi / 12) - 1,
+      tonicLetterIndex,
+      tonicOctave,
       keyInfo: buildKeyInfo(tonicPc, scaleKey),
       numBeats: num, beatValue: den, timeSig: `${num}/${den}`,
-      outkey,
+      outkey, clefMode, range,
+      degMin: range.lo - tonicBaseIdx,
+      degMax: range.hi - tonicBaseIdx,
     };
 
     // rhythm pools (notes and rests are independent)
@@ -216,8 +242,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (rhythm[0] && rhythm[0].rest) rhythm[0].rest = false; // first event is the given note
 
     // assign pitches / rests
+    const clampDeg = (d) => Math.max(cfg.degMin, Math.min(cfg.degMax, d));
     const events = [];
-    let deg = startOnTonic ? 0 : pick([0, 1, 2, 3, 4, 5, 6]);
+    let deg = clampDeg(startOnTonic ? 0 : pick([0, 1, 2, 3, 4, 5, 6]));
     let isFirstNote = true;
     rhythm.forEach((r) => {
       const beats = durationBeats(r.code, r.dots);
@@ -230,7 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const useLeap = leaps && (!steps || Math.random() > 0.7);
         if (useLeap) move = pick([2, 3, 4]) * pick([1, -1]);
         else move = pick([1, -1]);
-        deg = Math.max(-3, Math.min(9, deg + move));
+        deg = clampDeg(deg + move);
       }
       const note = scaleDegreeToNote(deg);
       if (outkey && !isFirstNote && Math.random() < 0.16) chromaticAlter(note);
@@ -246,19 +273,33 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================
   //  rendering (VexFlow)
   // ============================================================
-  function makeVexNote(ev) {
+  // Grand staff: notes below middle C (MIDI 60) sit on the bass clef.
+  const CLEF_SPLIT = 60;
+  const clefForEvent = (ev) => (ev.type === "note" && ev.midi < CLEF_SPLIT ? "bass" : "treble");
+  const restKeyFor = (clef) => CLEF_REST_KEY[clef] || "b/4";
+
+  function makeVexNote(ev, clef) {
     let n;
     if (ev.type === "rest") {
-      n = new VF.StaveNote({ keys: ["b/4"], duration: ev.duration + "r" });
+      n = new VF.StaveNote({ keys: [restKeyFor(clef)], duration: ev.duration + "r", clef });
     } else {
       n = new VF.StaveNote({
         keys: [ev.letter.toLowerCase() + "/" + ev.octave],
-        duration: ev.duration, clef: "treble", autoStem: true,
+        duration: ev.duration, clef, autoStem: true,
       });
       if (ev.acc) n.addModifier(new VF.Accidental(ev.acc), 0);
     }
     if (ev.dots) VF.Dot.buildAndAttach([n], { all: true });
     if (ev.color) n.setStyle({ fillStyle: ev.color, strokeStyle: ev.color });
+    return n;
+  }
+
+  // An invisible rest that occupies the other clef's voice so both voices stay
+  // rhythmically aligned (and beams break correctly across clef switches).
+  function makeSpacer(ev, clef) {
+    const n = new VF.StaveNote({ keys: [restKeyFor(clef)], duration: ev.duration + "r", clef });
+    if (ev.dots) VF.Dot.buildAndAttach([n], { all: true });
+    n.setStyle({ fillStyle: "rgba(0,0,0,0)", strokeStyle: "rgba(0,0,0,0)" });
     return n;
   }
 
@@ -277,35 +318,92 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cur.length) measures.push(cur);
     if (measures.length === 0) measures.push([]);
 
-    const firstExtra = 90, measW = 200, staveY = 18, height = 150;
+    const grand = cfg.clefMode === "grand";
+    const topClef = grand ? "treble" : cfg.clefMode;
+    const firstExtra = 90, measW = 200;
+    const trebleY = grand ? 20 : 48;
+    const bassY = 110, height = grand ? 220 : 175;
     const widths = measures.map((m, i) => (i === 0 ? measW + firstExtra : measW));
     const totalW = widths.reduce((a, b) => a + b, 0) + 20;
 
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(Math.max(totalW, 340), height + 20);
+    renderer.resize(Math.max(totalW, 340), height);
     const ctx = renderer.getContext();
 
-    let x = 10, firstStave = null, evCursor = 0;
+    let x = 10, firstTop = null, firstBass = null, evCursor = 0;
     const positions = [];
+    const lastMeasure = measures.length - 1;
     measures.forEach((mEvents, i) => {
-      const stave = new VF.Stave(x, staveY, widths[i]);
+      const tStave = new VF.Stave(x, trebleY, widths[i]);
+      const bStave = grand ? new VF.Stave(x, bassY, widths[i]) : null;
       if (i === 0) {
-        stave.addClef("treble").addKeySignature(cfg.keyInfo.vexKey).addTimeSignature(cfg.timeSig);
+        tStave.addClef(topClef).addKeySignature(cfg.keyInfo.vexKey).addTimeSignature(cfg.timeSig);
+        if (grand) bStave.addClef("bass").addKeySignature(cfg.keyInfo.vexKey).addTimeSignature(cfg.timeSig);
       }
-      stave.setContext(ctx).draw();
-      if (i === 0) firstStave = stave;
+      tStave.setContext(ctx).draw();
+      if (grand) bStave.setContext(ctx).draw();
 
-      if (mEvents.length) {
-        const notes = mEvents.map(makeVexNote);
+      // brace + bar lines joining the two staves into one grand staff
+      if (grand) {
+        const leftType = i === 0 ? "brace" : "singleLeft";
+        new VF.StaveConnector(tStave, bStave).setType(leftType).setContext(ctx).draw();
+        if (i === 0) new VF.StaveConnector(tStave, bStave).setType("singleLeft").setContext(ctx).draw();
+        if (i === lastMeasure) new VF.StaveConnector(tStave, bStave).setType("singleRight").setContext(ctx).draw();
+      }
+
+      if (i === 0) { firstTop = tStave; firstBass = bStave; }
+
+      if (mEvents.length && grand) {
+        // One token per event in each clef: a real note/rest on its clef, an
+        // invisible spacer on the other, so the two voices align beat-for-beat.
+        const trebleTokens = [], bassTokens = [], realIsTreble = [];
+        let lastClef = "treble";
+        mEvents.forEach((ev) => {
+          const clef = ev.type === "rest" ? lastClef : clefForEvent(ev);
+          if (ev.type === "note") lastClef = clef;
+          const real = makeVexNote(ev, clef);
+          const spacer = makeSpacer(ev, clef === "bass" ? "treble" : "bass");
+          if (clef === "bass") { bassTokens.push(real); trebleTokens.push(spacer); realIsTreble.push(false); }
+          else { trebleTokens.push(real); bassTokens.push(spacer); realIsTreble.push(true); }
+        });
+
+        const tVoice = new VF.Voice({ numBeats: cfg.numBeats, beatValue: cfg.beatValue });
+        const bVoice = new VF.Voice({ numBeats: cfg.numBeats, beatValue: cfg.beatValue });
+        [tVoice, bVoice].forEach((v) => {
+          if (VF.Voice.Mode) v.setMode(VF.Voice.Mode.SOFT);
+          else v.setStrict(false);
+        });
+        tVoice.addTickables(trebleTokens);
+        bVoice.addTickables(bassTokens);
+
+        let tBeams = [], bBeams = [];
+        try { tBeams = VF.Beam.generateBeams(trebleTokens); } catch (e) { tBeams = []; }
+        try { bBeams = VF.Beam.generateBeams(bassTokens); } catch (e) { bBeams = []; }
+
+        const avail = tStave.getX() + tStave.getWidth() - tStave.getNoteStartX() - 14;
+        new VF.Formatter().joinVoices([tVoice]).joinVoices([bVoice])
+          .format([tVoice, bVoice], Math.max(60, avail));
+        tVoice.draw(ctx, tStave);
+        bVoice.draw(ctx, bStave);
+        tBeams.forEach((b) => b.setContext(ctx).draw());
+        bBeams.forEach((b) => b.setContext(ctx).draw());
+
+        mEvents.forEach((ev, k) => {
+          const real = realIsTreble[k] ? trebleTokens[k] : bassTokens[k];
+          try { positions[evCursor + k] = real.getAbsoluteX(); } catch (e) { /* ignore */ }
+        });
+      } else if (mEvents.length) {
+        // single clef: one voice on the chosen staff
+        const notes = mEvents.map((ev) => makeVexNote(ev, cfg.clefMode));
         let beams = [];
         try { beams = VF.Beam.generateBeams(notes); } catch (e) { beams = []; }
         const voice = new VF.Voice({ numBeats: cfg.numBeats, beatValue: cfg.beatValue });
         if (VF.Voice.Mode) voice.setMode(VF.Voice.Mode.SOFT);
         else voice.setStrict(false);
         voice.addTickables(notes);
-        const avail = stave.getX() + stave.getWidth() - stave.getNoteStartX() - 14;
+        const avail = tStave.getX() + tStave.getWidth() - tStave.getNoteStartX() - 14;
         new VF.Formatter().joinVoices([voice]).format([voice], Math.max(60, avail));
-        voice.draw(ctx, stave);
+        voice.draw(ctx, tStave);
         beams.forEach((b) => b.setContext(ctx).draw());
         notes.forEach((n, k) => {
           try { positions[evCursor + k] = n.getAbsoluteX(); } catch (e) { /* ignore */ }
@@ -315,11 +413,18 @@ document.addEventListener("DOMContentLoaded", () => {
       x += widths[i];
     });
 
-    if (captureGeom && firstStave) {
-      staffGeom = {
-        yLine0: firstStave.getYForLine(0),
-        spacing: firstStave.getSpacingBetweenLines(),
-      };
+    if (captureGeom && firstTop) {
+      const staves = [{
+        clef: topClef,
+        y0: firstTop.getYForLine(0),
+        sp: firstTop.getSpacingBetweenLines(),
+      }];
+      if (grand) staves.push({
+        clef: "bass",
+        y0: firstBass.getYForLine(0),
+        sp: firstBass.getSpacingBetweenLines(),
+      });
+      staffGeom = { staves };
       notePositions = positions;
     }
   }
@@ -329,13 +434,20 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================
   function yToNote(clientY) {
     const svg = $("st-staff").querySelector("svg");
-    if (!svg || !staffGeom) return null;
+    if (!svg || !staffGeom || !staffGeom.staves.length) return null;
     const rect = svg.getBoundingClientRect();
     const y = clientY - rect.top;
-    const half = staffGeom.spacing / 2;
-    const stepsFromTop = Math.round((staffGeom.yLine0 - y) / half); // + = above F5
-    let idx = 38 + stepsFromTop; // F5 diatonic index = 5*7+3
-    idx = Math.max(21, Math.min(46, idx)); // clamp ~C3..E6
+    // For a grand staff, route the click to whichever staff it falls nearest.
+    let s = staffGeom.staves[0];
+    if (staffGeom.staves.length > 1) {
+      const top = staffGeom.staves[0], bot = staffGeom.staves[1];
+      const boundary = (top.y0 + 4 * top.sp + bot.y0) / 2;
+      s = y > boundary ? bot : top;
+    }
+    const base = CLEF_TOP_IDX[s.clef]; // diatonic idx of that clef's top line
+    const stepsFromTop = Math.round((s.y0 - y) / (s.sp / 2));
+    let idx = base + stepsFromTop;
+    idx = Math.max(cfg.range.lo, Math.min(cfg.range.hi, idx)); // stay within the staff's range
     const octave = Math.floor(idx / 7);
     const letter = LETTERS[((idx % 7) + 7) % 7];
     return { letter, octave };
