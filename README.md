@@ -2,6 +2,8 @@
 
 EarCraft is a browser ear training app.
 
+Try it out @ https://raybeorn.github.io/EarCraft/
+
 ## Staff selector
 
 A single **Staff** control at the top of the app sets which staff every mode uses
