@@ -48,32 +48,56 @@ const Piano = (() => {
     }
   }
 
+  // Resume the AudioContext if iOS left it "suspended" or "interrupted" — which
+  // it does whenever a standalone PWA is backgrounded, closed, or relaunched (on
+  // reopen iOS often restores the page rather than reloading it, so `started`
+  // stays true and nothing else revives the clock). Cheap no-op when running.
+  // Must be called from within a user gesture on iOS.
+  async function resumeContext() {
+    try {
+      const ctx = Tone.getContext();
+      if (ctx && ctx.state !== "running") {
+        setPlaybackSession();
+        await ctx.resume();
+        await Tone.start();
+        started = true;
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   // Must be called from a user gesture before any sound.
   async function ensureReady() {
     if (!started) {
       setPlaybackSession();
       await Tone.start();
       started = true;
+    } else {
+      await resumeContext();
     }
     await load();
   }
 
-  // Unlock the AudioContext on the very first user interaction anywhere on the
-  // page. This makes iOS reliably start audio even before the first Play tap.
+  // Revive the AudioContext on user interaction. Kept persistent (not removed
+  // after the first tap) so a context that iOS suspends after a relaunch or
+  // interruption is revived by the next tap anywhere on the page.
   function attachUnlock() {
-    const unlock = async () => {
-      try {
-        setPlaybackSession();
-        await Tone.start();
-        started = true;
-      } catch (e) {
-        /* ignore */
-      }
-      document.removeEventListener("touchend", unlock, true);
-      document.removeEventListener("pointerdown", unlock, true);
+    const revive = () => {
+      const ctx = typeof Tone.getContext === "function" ? Tone.getContext() : null;
+      if (ctx && ctx.state === "running") { started = true; return; }
+      setPlaybackSession();
+      Tone.start().then(() => { started = true; }).catch(() => {});
+      if (ctx) ctx.resume().catch(() => {});
     };
-    document.addEventListener("touchend", unlock, true);
-    document.addEventListener("pointerdown", unlock, true);
+    document.addEventListener("touchend", revive, true);
+    document.addEventListener("pointerdown", revive, true);
+    // Returning to the foreground: best-effort resume (may need a tap on iOS).
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      const ctx = typeof Tone.getContext === "function" ? Tone.getContext() : null;
+      if (ctx && ctx.state !== "running") ctx.resume().catch(() => {});
+    });
   }
   if (typeof document !== "undefined") attachUnlock();
 
